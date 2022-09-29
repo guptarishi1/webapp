@@ -9,7 +9,7 @@ To host the API:
 Command to run the python file to host the API in local server:
 
 ```code
-python assignment01.py
+python GET_API.py
 ```
 
 Test the below endpoints:
