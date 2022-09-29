@@ -15,7 +15,7 @@ python assignment01.py
 Test the below endpoints:
 
 ```code
-- http://127.0.0.1:5000/api/healthz
+http://127.0.0.1:5000/healthz
 ```
 
 
