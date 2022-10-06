@@ -18,17 +18,5 @@ Test the below endpoints:
 http://127.0.0.1:5000/healthz
 ```
 
-Built CI pipline and we can check workflow in actions.
 
-Basic auth is implemented in GET and PUT API's-  
-
-
-Without auth POST API is implemented:
-- Encrypted password with Bcrypt with salt
-
-username should be unique and http response is managed for this as well.
-If user try to retrieve more impormation than the http response is also managed. 
-
-http responses are managed like: 
-- 201, 400, 204, 401, 403
 
