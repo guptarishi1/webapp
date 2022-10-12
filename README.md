@@ -30,5 +30,6 @@ username should be unique and http response is managed for this as well.
 If user try to retrieve more impormation than the http response is also managed. 
 
 http responses are managed like: 
-- 201, 400, 204, 401, 403
+
+
 
