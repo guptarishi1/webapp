@@ -31,7 +31,7 @@ source "amazon-ebs" "my-ami" {
   secret_key = "${secrets.AWS_SECRET_ACCESS_KEY}"
   ami_name        = "csye6225_${formatdate("YYYY_MM_DD_hh_mm_ss", timestamp())}"
   ami_description = "AMI for CSYE 6225"
-  ami_user = "${var.ami_user}"
+  ami_users = "${var.ami_user}"
   ami_regions = [
     "us-east-1",
   ]
