@@ -6,17 +6,22 @@ from datetime import timedelta
 from datetime import datetime
 from functools import wraps
 import bcrypt
-from unicodedata import name
+import MySQLdb
+from os import environ
+
+import MySQLdb
 
 def init_db():
     app = Flask(__name__)
+    # db_connection= MySQLdb.connect("localhost","FlaskDB","FlaskDB@12345678","FlaskDB")
+    # cursor=db_connection.cursor()
+    # cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+    # db_connection.commit()
+    # cursor.close()  
     return app
 
 
 app = init_db()
-
-
-
 
 app.config['MYSQL_USER'] = 'FlaskDB'
 app.config['MYSQL_PASSWORD'] = 'FlaskDB@12345678'
@@ -26,11 +31,21 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 
 
-mysql = MySQL(app)
+db=environ.get('db')
+if db=="":
+    print("ptest")
+else:
+  mysql= MySQLdb.connect("localhost","FlaskDB","FlaskDB@12345678","FlaskDB")
+  cursor=mysql.cursor()
+  cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+  mysql.commit()
+  cursor.close()
 
+mysql = MySQL(app)
 
 @app.route('/healthz', methods=['GET'])
 def home():
+
     return "Hello 200 ok"
 
 
@@ -99,23 +114,23 @@ def home2(id):
     
 
 
-@app.route('/', methods = ['GET'])
-# @login_required
-def home1():
+# @app.route('/', methods = ['GET'])
+# # @login_required
+# def home1():
 
-    conn = mysql.connection
-    cur = mysql.connection.cursor()
+#     conn = mysql.connection
+#     cur = mysql.connection.cursor()
 
-    cur.execute('SELECT id, Last_Name, First_Name, username,account_updated,account_created FROM customer')
-    output = cur.fetchall()
+#     cur.execute('SELECT id, Last_Name, First_Name, username,account_updated,account_created FROM customer')
+#     output = cur.fetchall()
     
-    conn.commit()
+#     conn.commit()
     
-    cur.close()
+#     cur.close()
 
     
 
-    return  jsonify(output)
+#     return  jsonify(output)
 
 
 
@@ -216,12 +231,19 @@ def update_emp(id):
 
 @app.route('/v1/account', methods=['POST'])
 def create_cust():
+
     # try:        
         _json = request.json
         _Last_Name = _json['Last_Name']
         _First_Name = _json['First_Name']
         _username = _json['username'] 
         _password = _json['password'] 
+        # conn = mysql.connection
+        # cursor = conn.cursor()
+        # # cursor = conn.cursor()
+        # # cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+        # conn.commit()
+        # cursor.close()
 
         salt = bcrypt.gensalt()
         hash_pwd = bcrypt.hashpw(_password.encode('utf-8'), salt)
@@ -245,8 +267,7 @@ def create_cust():
         if output[0]["count(username)"] >= 1 :
             return "Bad Request", 400
         
-
-        
+    
         sqlQuery = "INSERT INTO customer(Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s, %s,%s, %s,%s,%s)"
         bindData = (_Last_Name,_First_Name,_username,_password, date_time, date_time)           
         cursor.execute('INSERT INTO customer(Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s, %s,%s, %s,%s,%s)',(_Last_Name,_First_Name,_username,hash_pwd.decode('utf-8'), date_time, date_time))
@@ -266,10 +287,13 @@ def create_cust():
     # except Exception as e:
     #     print(e)
 
-
+with app.app_context():
+    print('connection setup')    
+    # conn = mysql.connection
 
 
 
 if(__name__=="__main__") :
+    
     app.run(debug=True)
 

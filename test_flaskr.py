@@ -2,7 +2,7 @@ import os
 import tempfile
 
 import pytest
-import  GET_API as flaskr
+import  app as flaskr
 
 
 @pytest.fixture
