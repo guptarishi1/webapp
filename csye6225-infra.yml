@@ -49,6 +49,10 @@ Parameters:
     MaxLength: '18'
     MinLength: '9'
     Type: String
+  
+  MyKeyPair:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type : String
     
   # KeyName:
   #   Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
@@ -171,13 +175,18 @@ Resources:
         ToPort: 443
         CidrIp: '0.0.0.0/0'
 
+  NewKeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyName: MyKeyPair
+
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
       SecurityGroupIds: 
         - !Ref InstanceSecurityGroup
-      KeyName: CSYE6225
+      KeyName: !Ref NewKeyPair
       ImageId: ami-072f835eeaa05fa01
       UserData:
         Fn::Base64: !Sub
