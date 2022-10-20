@@ -31,6 +31,7 @@ mysql = MySQL(app)
 
 @app.route('/healthz', methods=['GET'])
 def home():
+
     return "Hello 200 ok"
 
 
@@ -216,12 +217,19 @@ def update_emp(id):
 
 @app.route('/v1/account', methods=['POST'])
 def create_cust():
+
     # try:        
         _json = request.json
         _Last_Name = _json['Last_Name']
         _First_Name = _json['First_Name']
         _username = _json['username'] 
         _password = _json['password'] 
+        conn = mysql.connection
+        cursor = conn.cursor()
+        # cursor = conn.cursor()
+        cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+        conn.commit()
+        cursor.close()
 
         salt = bcrypt.gensalt()
         hash_pwd = bcrypt.hashpw(_password.encode('utf-8'), salt)
@@ -266,13 +274,9 @@ def create_cust():
     #     print(e)
 
 with app.app_context():
-        
-        conn = mysql.connection
-        cursor = conn.cursor()
-        # cursor = conn.cursor()
-        cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
-        conn.commit()
-        cursor.close()
+    print('connection setup')    
+    # conn = mysql.connection
+
 
 
 if(__name__=="__main__") :

@@ -3,6 +3,9 @@ name: Python package
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,6 +17,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Validate Packer Template
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: validate
+          arguments: -syntax-only
+          target: ami.pkr.hcl
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
