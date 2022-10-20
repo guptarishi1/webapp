@@ -14,13 +14,5 @@ MYSQL_SCRIPT
 
 mysql -uFlaskDB -pFlaskDB@12345678<<eof
 use FlaskDB;
-CREATE TABLE customer (
-    id int not null AUTO_INCREMENT PRIMARY KEY,
-    Last_Name varchar(255) NOT NULL,
-    First_Name varchar(255) NOT NULL,
-    username varchar(255) NOT NULL UNIQUE,
-    account_created  varchar(255),
-    password varchar(255) NOT NULL,
-	account_updated  varchar(255)  
-);
+
 eof

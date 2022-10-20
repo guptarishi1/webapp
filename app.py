@@ -6,25 +6,26 @@ from datetime import timedelta
 from datetime import datetime
 from functools import wraps
 import bcrypt
-from unicodedata import name
+
+import MySQLdb
 
 def init_db():
     app = Flask(__name__)
+    db_connection= MySQLdb.connect("localhost","FlaskDB","FlaskDB@12345678","FlaskDB")
+    cursor=db_connection.cursor()
+    cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+    db_connection.commit()
+    cursor.close()  
     return app
 
 
 app = init_db()
-
-
-
 
 app.config['MYSQL_USER'] = 'FlaskDB'
 app.config['MYSQL_PASSWORD'] = 'FlaskDB@12345678'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_DB'] = 'FlaskDB'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-
-
 
 mysql = MySQL(app)
 
@@ -224,12 +225,12 @@ def create_cust():
         _First_Name = _json['First_Name']
         _username = _json['username'] 
         _password = _json['password'] 
-        conn = mysql.connection
-        cursor = conn.cursor()
+        # conn = mysql.connection
         # cursor = conn.cursor()
-        cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
-        conn.commit()
-        cursor.close()
+        # # cursor = conn.cursor()
+        # # cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+        # conn.commit()
+        # cursor.close()
 
         salt = bcrypt.gensalt()
         hash_pwd = bcrypt.hashpw(_password.encode('utf-8'), salt)
