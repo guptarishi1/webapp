@@ -245,8 +245,7 @@ def create_cust():
         if output[0]["count(username)"] >= 1 :
             return "Bad Request", 400
         
-
-        
+    
         sqlQuery = "INSERT INTO customer(Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s, %s,%s, %s,%s,%s)"
         bindData = (_Last_Name,_First_Name,_username,_password, date_time, date_time)           
         cursor.execute('INSERT INTO customer(Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s, %s,%s, %s,%s,%s)',(_Last_Name,_First_Name,_username,hash_pwd.decode('utf-8'), date_time, date_time))
@@ -266,10 +265,17 @@ def create_cust():
     # except Exception as e:
     #     print(e)
 
-
-
+with app.app_context():
+        
+        conn = mysql.connection
+        cursor = conn.cursor()
+        # cursor = conn.cursor()
+        cursor.execute('CREATE TABLE if not exists customer (id int not null AUTO_INCREMENT PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+        conn.commit()
+        cursor.close()
 
 
 if(__name__=="__main__") :
+    
     app.run(debug=True)
 
