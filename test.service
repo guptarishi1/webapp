@@ -1,0 +1,11 @@
+[Unit]
+Description=Gunicorn instance for a simple hello world app
+After=network.target
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/
+ExecStart=/usr/bin/gunicorn -b localhost:8000 app:app
+Restart=always
+[Install]
+WantedBy=multi-user.target
