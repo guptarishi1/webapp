@@ -77,7 +77,7 @@ build {
   provisioner "file"{
   source = "requirements.txt"
   destination = "/home/ubuntu/requirements.txt"
-  
+  }
 
   provisioner "shell" {
     environment_vars = [
