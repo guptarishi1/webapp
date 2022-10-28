@@ -1,0 +1,8 @@
+{
+    "db_host":"${MyDB.Endpoint.Address}",
+    "db_user":"csye6225root",
+    "db_password":"csye6225pwd",
+    "default_database":"csye6225",
+    "db_port":3306,
+    "s3_bucket":"${S3Bucket}"
+}

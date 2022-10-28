@@ -5,7 +5,7 @@ After=network.target
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/
-ExecStart=/usr/bin/gunicorn -b localhost:8000 app:app -e db="db"
+ExecStart=/usr/bin/gunicorn -b localhost:8000 app:app
 Restart=always
 [Install]
 WantedBy=multi-user.target
