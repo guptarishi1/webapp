@@ -50,3 +50,8 @@ To delete stack run the below command in AWS CLI:
 
 check the status of stack in AWS console. 
 
+create stack for Assignment 5-
+aws cloudformation create-stack  \
+ --stack-name myteststack3   --template-body file://csye6225-infra.yml \
+ --parameters ParameterKey=VpcCIDR,ParameterValue="10.0.0.0/16" ParameterKey=PublicSubnet1CIDR,ParameterValue="10.0.3.0/24" ParameterKey=PublicSubnet2CIDR,ParameterValue="10.0.4.0/24" ParameterKey=PublicSubnet3CIDR,ParameterValue="10.0.5.0/24" ParameterKey=PrivateSubnet1CIDR,ParameterValue="10.0.6.0/24" ParameterKey=PrivateSubnet2CIDR,ParameterValue="10.0.7.0/24" ParameterKey=PrivateSubnet3CIDR,ParameterValue="10.0.8.0/24" ParameterKey=AMIID,ParameterValue="ami-0df661ae9e6e5efa3" ParameterKey=MyKeyPair,ParameterValue="CSYE6225" --profile Dev_Admin --region us-east-1 --capabilities CAPABILITY_NAMED_IAM
+
