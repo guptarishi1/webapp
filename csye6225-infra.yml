@@ -369,7 +369,9 @@ Resources:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true                     
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled                     
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
