@@ -7,7 +7,7 @@ import  app as flaskr
 
 @pytest.fixture
 def client():
-    db_fd, flaskr.app.config['DATABASE'] = tempfile.mkstemp()
+    db_fd, flaskr.app.config['default_database'] = tempfile.mkstemp()
     flaskr.app.config['TESTING'] = True
 
     with flaskr.app.test_client() as client:
@@ -16,7 +16,7 @@ def client():
         yield client
 
     os.close(db_fd)
-    os.unlink(flaskr.app.config['DATABASE'])
+    os.unlink(flaskr.app.config['default_database'])
 
 
 def test_empty_db(client):

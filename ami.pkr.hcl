@@ -18,20 +18,15 @@ variable "subnet_id" {
   default = "subnet-000ee724645978d81"
 }
 
-variable "ami_user" {
-  type    = list(string)
-  default = ["022816248044","682348868911"]
-}
 
 
 # https://www.packer.io/plugins/builders/amazon/ebs
 source "amazon-ebs" "my-ami" {
   region     = "${var.aws_region}"
- # access_key = "${secrets.AWS_ACCESS_KEY_ID}"
- # secret_key = "${secrets.AWS_SECRET_ACCESS_KEY}"
+
   ami_name        = "csye6225_${formatdate("YYYY_MM_DD_hh_mm_ss", timestamp())}"
   ami_description = "AMI for CSYE 6225"
-  ami_users = "${var.ami_user}"
+  ami_users = ["022816248044","022816248044"]
   ami_regions = [
     "us-east-1",
   ]
@@ -79,13 +74,23 @@ build {
   destination = "/home/ubuntu/requirements.txt"
   }
 
+  provisioner "file"{
+  source = "dbconfig.json"
+  destination = "/home/ubuntu/dbconfig.json"
+  }
+  
+  provisioner "file"{
+  source = "script.sh"
+  destination = "/home/ubuntu/script.sh"
+  }
+
   provisioner "shell" {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive",
       "CHECKPOINT_DISABLE=1"
     ] 
 
-    scripts = fileset(".","{sql,script}.sh")
+    scripts = fileset(".","script.sh")
       
     // type: "shell"
     // inline = [
