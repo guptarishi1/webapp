@@ -26,4 +26,3 @@ sudo systemctl daemon-reload
 sudo systemctl start test.service
 sudo systemctl enable test.service
 sudo systemctl restart test.service
-
