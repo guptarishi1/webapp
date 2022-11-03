@@ -339,15 +339,15 @@ def get_docs(doc_id):
     cursor = mysql.cursor()
 
     cursor.execute('SELECT doc_id,user_id,name,date_created,s3_bucket_path FROM document WHERE doc_id = %s',[doc_id])
-    return_val = list(cursor.fetchall())
-    print(return_val)
-    json_output = {
-        'doc_id': return_val[0]['doc_id'],
-        'id': return_val[0]['user_id'],
-        'name': return_val[0]['name'],
-        'date_created': return_val[0]['date_created'],
-        's3_bucket_path': return_val[0]['s3_bucket_path']
-    }
+    return_val = cursor.fetchall()
+    # print(return_val)
+    # json_output = {
+    #     'doc_id': return_val[0]['doc_id'],
+    #     'id': return_val[0]['user_id'],
+    #     'name': return_val[0]['name'],
+    #     'date_created': return_val[0]['date_created'],
+    #     's3_bucket_path': return_val[0]['s3_bucket_path']
+    # }
 
     cursor.close()
 
@@ -355,7 +355,7 @@ def get_docs(doc_id):
     # downloadfile = send_file(output, as_attachment=True)
 
 
-    return jsonify(json_output)    
+    return jsonify(return_val)    
 
 
 @app.route('/v1/documents/<doc_id>', methods = ['DELETE'])
@@ -366,10 +366,10 @@ def delete_file(doc_id):
     username = request.authorization.username
     cursor.execute('SELECT id, username, password FROM customer WHERE username = %s',[username])
     return_val = list(cursor.fetchall())
-    user_data = {
-        'id': return_val[0][0],
-        'username': return_val[0][1]
-    }
+    # user_data = {
+    #     'id': return_val[0][0],
+    #     'username': return_val[0][1]
+    # }
 
     
     print(username)
