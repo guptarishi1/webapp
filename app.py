@@ -59,6 +59,10 @@ def home():
 
     return "Hello 200 ok"
 
+@app.route('/', methods=['GET'])
+def test1():
+
+    return "Web development under progress"
 
 @app.route('/v1/account/<string:id>', methods = ['GET'])
 
@@ -337,6 +341,31 @@ def upload_file():
 def get_docs(doc_id): 
 
     cursor = mysql.cursor()
+    username = request.authorization.username
+    cursor.execute('SELECT id, username, password FROM customer WHERE username = %s',[username])
+    return_val = list(cursor.fetchall())
+    # user_data = {
+    #     'id': return_val[0][0],
+    #     'username': return_val[0][1]
+    # }
+
+    
+    print(username)
+    if not request.authorization:
+        return f"Basic auth missing", 403
+    else:
+          
+
+        # Authorization
+        auth_password = request.authorization.password.encode('utf-8')
+        print("auth_password: ",auth_password)
+        orig_password = return_val[0][2].encode('utf-8')
+        print("orig_password: ",orig_password)
+        password_check = bcrypt.checkpw(auth_password, orig_password)
+        print("Password check: ",password_check)
+        if not(password_check):
+            return f"Unauthorized", 401
+        print('Authorized')
 
     cursor.execute('SELECT doc_id,user_id,name,date_created,s3_bucket_path FROM document WHERE doc_id = %s',[doc_id])
     return_val = cursor.fetchall()
