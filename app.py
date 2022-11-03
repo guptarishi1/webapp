@@ -60,7 +60,7 @@ def home():
     return "Hello 200 ok"
 
 @app.route('', methods=['GET'])
-def home():
+def test1():
 
     return "Web development under progress"
 
