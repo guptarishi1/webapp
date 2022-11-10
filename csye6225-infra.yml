@@ -277,6 +277,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VPC
 
+
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -345,7 +346,18 @@ Resources:
             !Sub |
             #!/bin/bash
             echo "{\"db_host\":\"${MyDB.Endpoint.Address}\",\"db_user\":\"csye6225root\",\"db_password\":\"csye6225pwd\",\"default_database\":\"csye6225\",\"db_port\":3306,\"s3_bucket\":\"${S3Bucket}\"}" > /home/ubuntu/dbconfig.json
-  
+
+  myDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: "Z02366482Y266U940QI5X"
+      Comment: DNS of my instance
+      Name: "demo.rishi-csye6225.me"
+      Type: A
+      TTL: 60
+      ResourceRecords:
+        - !GetAtt EC2Instance.PublicIp
+
   S3Bucket:
     Type: "AWS::S3::Bucket"
     DeletionPolicy: Delete
@@ -397,10 +409,35 @@ Resources:
                 - 'S3:ListAllMyBuckets' 
                 - 's3:GetObject'
                 - 's3:PutObject'
-                - 's3:DeleteObject'
+                - 's3:DeleteObjectVersion'
               Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
+      Roles:
+                  - !Ref IAMRole
+
+  CloudWatchAgentPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: "EC2CloudWatchPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+              - 'ec2:DescribeTags'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogStreams'
+              - 'logs:DescribeLogGroups'
+              - 'logs:CreateLogStream'
+              - 'logs:CreateLogGroup'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+              - 'ssm:PutParameter'
+            Resource: "arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*"
       Roles:
                   - !Ref IAMRole
 

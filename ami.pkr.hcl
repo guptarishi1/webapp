@@ -23,7 +23,6 @@ variable "subnet_id" {
 # https://www.packer.io/plugins/builders/amazon/ebs
 source "amazon-ebs" "my-ami" {
   region     = "${var.aws_region}"
-
   ami_name        = "csye6225_${formatdate("YYYY_MM_DD_hh_mm_ss", timestamp())}"
   ami_description = "AMI for CSYE 6225"
   ami_users = ["022816248044","022816248044"]
@@ -77,6 +76,11 @@ build {
   provisioner "file"{
   source = "dbconfig.json"
   destination = "/home/ubuntu/dbconfig.json"
+  }
+
+  provisioner "file"{
+  source = "cloudwatch-config.json"
+  destination = "/home/ubuntu/cloudwatch-config.json"
   }
   
   provisioner "file"{

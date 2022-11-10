@@ -11,6 +11,7 @@ sudo apt install gunicorn -y
 sudo apt install mysql-client -y
 sudo apt-get install nginx -y
 virtualenv -p python3 /home/ubuntu/flask && source /home/ubuntu/flask/bin/activate
+sudo pip install statsd
 sudo pip install -r requirements.txt
 
 sudo cp default /etc/nginx/sites-available/default
@@ -27,3 +28,19 @@ sudo systemctl start test.service
 sudo systemctl enable test.service
 sudo systemctl restart test.service
 
+#install cloud watch agent
+#download it
+sudo curl -o /root/amazon-cloudwatch-agent.deb https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb
+#install it
+sudo dpkg -i -E /root/amazon-cloudwatch-agent.deb
+
+
+#start cloudwatch agent
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -c file:/home/ubuntu/cloudwatch-config.json \
+    -s
+
+sudo systemctl enable amazon-cloudwatch-agent.service
+sudo service amazon-cloudwatch-agent start
