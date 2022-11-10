@@ -20,7 +20,7 @@ import botocore
 import uuid
 import MySQLdb
 import time
-from statsd import StatsClient
+import statsd  
 
 def init_db():
     app = Flask(__name__)  
@@ -31,7 +31,7 @@ app = init_db()
 
 mysql = MySQL(app)
 
-c = StatsClient()
+c = statsd.StatsClient()
 
 with open("dbconfig.json", "r") as f:
     config = json.load(f)
