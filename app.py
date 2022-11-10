@@ -19,6 +19,8 @@ import sys
 import botocore
 import uuid
 import MySQLdb
+import time
+from statsd import StatsClient
 
 def init_db():
     app = Flask(__name__)  
@@ -29,7 +31,7 @@ app = init_db()
 
 mysql = MySQL(app)
 
-
+c = StatsClient()
 
 with open("dbconfig.json", "r") as f:
     config = json.load(f)
@@ -56,17 +58,33 @@ from werkzeug.utils import secure_filename
 
 @app.route('/healthz', methods=['GET'])
 def home():
+    start=time.time()
+
+    app.logger.info("Hello 200 OK")
+    dur = (time.time() - start)*1000
+    c.timing("tasktime",dur)
+    c.incr("taskcount")   
 
     return "Hello 200 ok"
 
 @app.route('/', methods=['GET'])
 def test1():
+    start=time.time()
 
+    app.logger.info("Hello 200 OK")
+    dur = (time.time() - start)*1000
+    c.timing("Open point",dur)
+    c.incr("Open point count") 
+    app.logger.info("Hello")
     return "Web development under progress"
 
 @app.route('/v1/account/<string:id>', methods = ['GET'])
 
 def home2(id):
+    start=time.time()
+
+    
+
 
     cursor = mysql.cursor()
 
@@ -109,6 +127,11 @@ def home2(id):
     cursor.execute('SELECT id,Last_Name,First_Name,username,account_updated,account_created FROM customer WHERE id=%s',[id])
     output = cursor.fetchall()
     cursor.close()
+    app.logger.info("GET Customer")
+
+    dur = (time.time() - start)*1000
+    c.timing("Get Customer duration",dur)
+    c.incr("GET Customer")
 
     return jsonify(output)
 
@@ -116,6 +139,11 @@ def home2(id):
 @app.route('/v1/account/<string:id>', methods=['PUT'])
 # @login_required
 def update_emp(id):
+
+    start=time.time()
+
+    app.logger.info("Hello 200 OK")
+    
 
     _json = request.json 
     if len(_json) > 3 :
@@ -175,6 +203,9 @@ def update_emp(id):
     
     respone = jsonify('Employee updated successfully!')
     respone.status_code = 200
+    dur = (time.time() - start)*1000
+    c.timing(" Counter",dur)
+    c.incr("Put customer count")
     return jsonify(output),204
 
 
@@ -183,7 +214,10 @@ def update_emp(id):
 @app.route('/v1/account', methods=['POST'])
 def create_cust():
 
-    # try:        
+ 
+    # try: 
+        start=time.time()
+        app.logger.info("Hello 200 OK")           
         _json = request.json
         _Last_Name = _json['Last_Name']
         _First_Name = _json['First_Name']
@@ -223,6 +257,10 @@ def create_cust():
 
         respone = jsonify('Customer added successfully!')
         respone.status_code = 200
+        dur = (time.time() - start)*1000
+        c.timing("Post Timing",dur)
+        c.incr("Post count")
+       
         return jsonify(output), 201 
 
 
@@ -251,6 +289,10 @@ def delete_file_from_s3(file, bucket_name,doc_id, user_id, VersionId):
 
 @app.route('/v1/documents', methods = ['GET'])
 def show_docs():
+    start=time.time()
+
+    app.logger.info("Hello 200 OK")
+
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -271,6 +313,10 @@ def show_docs():
     for x in doc_data:
         json_data.append(dict(zip(bind_names, x)))
 
+    dur = (time.time() - start)*1000
+    c.timing("Get Doc Timing",dur)
+    c.incr("Get Doc count") 
+
     return jsonify(json_data)
 
 
@@ -283,7 +329,10 @@ def allowed_file(filename):
 
 @app.route('/v1/documents', methods = ['POST'])
 def upload_file():
-    
+    start=time.time()
+
+ 
+
     cursor = mysql.cursor()
     username = request.authorization.username
     cursor.execute('SELECT id, username, password FROM customer WHERE username = %s',[username])
@@ -333,12 +382,23 @@ def upload_file():
         resp_data['s3_bucket_path'] = s3_bucket_path
     cursor.execute("INSERT INTO document(doc_id, user_id, name, date_created, s3_bucket_path, versionId) VALUES('{doc_id}','{user_id}','{name}','{date_created}','{s3_bucket_path}','{versionId}')" .format(doc_id = resp_data['doc_id'], user_id = resp_data['user_id'], name = resp_data['name'], date_created = resp_data['date_created'], s3_bucket_path = resp_data['s3_bucket_path'], versionId =versionId))
     mysql.commit()
-    cursor.close()  
+    cursor.close() 
+
+    app.logger.info("Hello 200 OK")
+    dur = (time.time() - start)*1000
+    c.timing("Post Doc Timing",dur)
+    c.incr("Post Doc count")  
     return jsonify(resp_data)
 
     
 @app.route('/v1/documents/<doc_id>', methods = ['GET'])
 def get_docs(doc_id): 
+
+    start=time.time()
+
+    app.logger.info("Hello 200 OK")
+
+
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -382,14 +442,20 @@ def get_docs(doc_id):
 
     # output = download(doc_id, BUCKET)
     # downloadfile = send_file(output, as_attachment=True)
-
+    dur = (time.time() - start)*1000
+    c.timing("Get from Doc ID timing",dur)
+    c.incr("Get from Doc ID  count") 
 
     return jsonify(return_val)    
 
 
 @app.route('/v1/documents/<doc_id>', methods = ['DELETE'])
 def delete_file(doc_id):
-    
+
+    start=time.time()
+
+    app.logger.info("Hello 200 OK")
+   
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -429,8 +495,14 @@ def delete_file(doc_id):
     }
     delete_file_from_s3(doc_data['name'], app.config["s3_bucket"],doc_id, doc_data['user_id'], doc_data['versionId'])
     cursor.execute('DELETE FROM document WHERE doc_id = %s',[doc_id])
+
     mysql.commit()
-    cursor.close()     
+    cursor.close()  
+    
+    dur = (time.time() - start)*1000
+    c.timing("Deleting the Document Timing",dur)
+    c.incr("Deleting the Document count")    
+
     return jsonify({"MESSAGE":"FILE DELETED"})
 
 with app.app_context():
