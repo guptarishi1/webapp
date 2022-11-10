@@ -77,7 +77,6 @@ ssh-import-id==5.11
 statsd==4.0.1
 tomli==2.0.1
 Twisted==22.1.0
-ubuntu-advantage-tools==27.10
 ufw==0.36.1
 unattended-upgrades==0.1
 urllib3==1.26.12
