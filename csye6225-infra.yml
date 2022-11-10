@@ -277,6 +277,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VPC
 
+
   DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -412,6 +413,31 @@ Resources:
               Resource:
                   - !Sub arn:aws:s3:::${S3Bucket}
                   - !Sub arn:aws:s3:::${S3Bucket}/*
+      Roles:
+                  - !Ref IAMRole
+
+  CloudWatchAgentPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: "EC2CloudWatchPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+              - 'ec2:DescribeTags'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogStreams'
+              - 'logs:DescribeLogGroups'
+              - 'logs:CreateLogStream'
+              - 'logs:CreateLogGroup'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+              - 'ssm:PutParameter'
+            Resource: "arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*"
       Roles:
                   - !Ref IAMRole
 
