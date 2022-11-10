@@ -75,7 +75,6 @@ six==1.16.0
 SQLAlchemy==1.4.41
 ssh-import-id==5.11
 statsd==4.0.1
-systemd-python==234
 tomli==2.0.1
 Twisted==22.1.0
 ubuntu-advantage-tools==27.10
