@@ -1,31 +1,4 @@
 AWSTemplateFormatVersion: 2010-09-09
-
-Description: Creating VPC and subnet
-
-Metadata:
-  AWS::CloudFormation::Interface: 
-    ParameterGroups:
-      - 
-        Label: 
-          default: "VPC CIDR"
-        Parameters: 
-          - VpcCIDR
-      - 
-        Label: 
-          default: "Subnet CIDR"
-        Parameters:
-          - PublicSubnet1CIDR
-          - PublicSubnet2CIDR
-          - PublicSubnet3CIDR
-          - PrivateSubnet1CIDR
-          - PrivateSubnet2CIDR
-          - PrivateSubnet3CIDR
-      - 
-        Label: 
-          default: "SSH CIDR"
-        Parameters: 
-          - SSHLocation
-          
             
 Parameters:
   VpcCIDR:
@@ -363,20 +336,19 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       BucketName: !Join
-           - '-'
-           - - !Ref BucketPrefix
-             - !Ref AWS::AccountId
-             - !Ref AWS::Region
-             - 'bucket'
-             - !Select 
-               - 0
-               - !Split 
-                 - '-'
-                 - !Select 
-                   - 2
-                   - !Split 
-                     - /
-                     - !Ref AWS::StackId
+        - "."
+        - - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+          - Ref: "BucketPrefix"
+          - "rishi.csye6225.me"
+
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -441,6 +413,55 @@ Resources:
       Roles:
                   - !Ref IAMRole
 
+  GHEC2AMI:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: "gh-ec2-ami"
+      PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+              - ec2:AttachVolume
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CopyImage
+              - ec2:CreateImage
+              - ec2:CreateKeypair
+              - ec2:CreateSecurityGroup
+              - ec2:CreateSnapshot
+              - ec2:CreateTags
+              - ec2:CreateVolume
+              - ec2:DeleteKeyPair
+              - ec2:DeleteSecurityGroup
+              - ec2:DeleteSnapshot
+              - ec2:DeleteVolume
+              - ec2:DeregisterImage
+              - ec2:DescribeImageAttribute
+              - ec2:DescribeImages
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeRegions
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSnapshots
+              - ec2:DescribeSubnets
+              - ec2:DescribeTags
+              - ec2:DescribeVolumes
+              - ec2:DetachVolume
+              - ec2:GetPasswordData
+              - ec2:ModifyImageAttribute
+              - ec2:ModifyInstanceAttribute
+              - ec2:ModifySnapshotAttribute
+              - ec2:RegisterImage
+              - ec2:RunInstances
+              - ec2:StopInstances
+              - ec2:TerminateInstances
+            Resource:
+              - '*'      
+      # Users:
+      #     - ghactions-app
+      Roles: 
+        - Ref: IAMRole
+
   IAMRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -461,7 +482,246 @@ Resources:
       Path: /
       Roles: 
         - Ref: IAMRole
-        
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeDeployServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action: 
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
+      Path: "/"
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ComputePlatform: Server
+      ApplicationName: csye6225webapp
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    DependsOn: CodeDeployApplication 
+    Properties:
+      DeploymentGroupName: csye6225-webapp-deployment
+      ApplicationName: !Ref CodeDeployApplication
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+      DeploymentStyle:
+        DeploymentType: IN_PLACE
+        DeploymentOption: WITHOUT_TRAFFIC_CONTROL
+      DeploymentConfigName: CodeDeployDefault.AllAtOnce
+      AutoRollbackConfiguration:
+        Enabled: 'true'
+        Events: 
+          - DEPLOYMENT_FAILURE
+      Ec2TagFilters:
+        - Key: Name
+          Value: FlaskAppASG
+          Type: KEY_AND_VALUE
+
+  SNSservice:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: verify_email
+      Subscription:
+      - Endpoint: !GetAtt LambdaFunction.Arn
+        Protocol: lambda
+      TopicName: verify_email
+  SNStopicpolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: __default_policy_ID
+        Statement:
+        - Sid: __default_statement_ID
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - SNS:Publish
+          - SNS:DeleteTopic
+          - SNS:ListSubscriptionsByTopic
+          - SNS:GetTopicAttributes
+          - SNS:Receive
+          - SNS:AddPermission
+          - SNS:Subscribe
+          Resource:
+            Ref: SNSservice
+          Condition:
+            StringEquals:
+              AWS:SourceOwner: !Ref AWS::AccountId
+        - Sid: __console_pub_0
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: SNS:Publish
+          Resource:
+            Ref: SNSservice
+        - Sid: __console_sub_0
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - SNS:Subscribe
+          - SNS:Receive
+          Resource:
+            Ref: SNSservice
+      Topics:
+      - Ref: SNSservice
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn:
+        Ref: SNSservice
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Description: Store token in dynamodb and send email to SNS
+    Properties:
+      FunctionName: verifyEmail
+      Role:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:iam::'
+          - !Ref AWS::AccountId
+          - ":role/"
+          - !Ref LambdaRole
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Code:
+        ZipFile: |
+            import json
+            import boto3
+            def sendemail(email,token):
+                          # TODO implement 
+                          user = email
+                          email = [email]
+
+                          ses = boto3.client("ses")
+                          try:
+
+                              response = ses.send_email(
+                                  Source = "Admin@demo.rishi-csye6225.me",
+                                  Destination={
+                                      'ToAddresses': email
+                                  },
+                                  Message={
+                                      'Subject': {
+                                          'Data': "Account Verification Email"
+                                      },
+                                      'Body': {
+                                          'Text': {
+                                              'Data': "Please click on the link to verify your account. \n   http://demo.rishi-csye6225.me/v1/verifyUserEmail?Email={0:}&Token={1:}".format(user,token)
+                                          }
+                                      }
+                                  }
+                              )
+                              print("Success")
+
+                          except Exception as e:
+                              print(e)
+            def lambda_handler(event, context):        
+                          message= event['Records'][0]['Sns']['Message']
+                          attributes = event['Records'][0]['Sns']['MessageAttributes']
+                          Token = event['Records'][0]['Sns']['MessageAttributes']['Token']['Value']
+                          Email = event['Records'][0]['Sns']['MessageAttributes']['Email']['Value']
+                          print(message)
+                          print(attributes)
+                          sendemail(Email,Token)
+                          return {
+                              'message' : message,
+                              'attributes':attributes,
+                              'Email' : Email
+                          }
+      Description: Function to store token in dynamodb and send email to SNS
+  DynamodbTablePro:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - 
+          AttributeName: "Email"
+          AttributeType: "S"
+        - 
+          AttributeName: "TokenName"
+          AttributeType: "S"
+      KeySchema:
+        - 
+          AttributeName: "Email"
+          KeyType: "HASH"
+        -
+          AttributeName: "TokenName"
+          KeyType: "RANGE"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: csye6225Pro2
+      TimeToLiveSpecification:
+        AttributeName: TimeToLive
+        Enabled: true
+      Tags:
+        - Key: key
+          Value: value
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "LambdaFunctionRole"
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+                - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSESFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  DynamoDBPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: DynamoPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToLive'
+            Resource: 
+              - '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:PutItem'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:Delete*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:BatchGet*'
+            Resource:
+              - !GetAtt DynamodbTablePro.Arn
+      Roles:
+        - !Ref IAMRole
+
 Outputs:
   VPC:
     Description: VPC ID
