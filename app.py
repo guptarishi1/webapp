@@ -212,15 +212,13 @@ def update_emp(id):
     c.incr("Put customer count")
     return jsonify(output),204
 
-lambda_client = boto3.client('lambda',
-                        region_name= 'us-east-1',
-                        aws_access_key_id='AKIAZ5XZJOUX3RDIIZQI',
-                        aws_secret_access_key='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')
+# lambda_client = boto3.client('lambda',
+#                         region_name= 'us-east-1')
 
 
 def validated_user(username):
     cursor=mysql.cursor()
-    cursor.execute('SELECT username,account_verified FROM accounts_01 where username = %s',[username])
+    cursor.execute('SELECT username,account_verified FROM customer where username = %s',[username])
     output = list(cursor.fetchall())
     if output[0][1] == 1:
         return True
@@ -605,8 +603,8 @@ def verify_user():
     # )
     table_items = dynamodb_table.get_item(Key={'Email':user_email, 'TokenName':token})['Item']
     token_verified = check_token_expiry(table_items)
-    if token_verified:
-        cursor=mysql.cursor()  
+    cursor=mysql.cursor()
+    if token_verified:   
         cursor.execute('UPDATE customer SET account_verified = 1 WHERE username = %s',[user_email])
         mysql.commit()
         
