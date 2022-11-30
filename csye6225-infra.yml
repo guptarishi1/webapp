@@ -74,6 +74,15 @@ Parameters:
    Type: String
    Default: dev-rishi 
 
+  Ipv4Cidr:
+    Description: "AMI ID for Instance"
+    Type: String
+    Default: "0.0.0.0/0"
+  Ipv6Cidr:
+    Description: "AMI ID for Instance"
+    Type: String
+    Default: "::/0"
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -109,6 +118,7 @@ Resources:
           Value: Public Subnet 1
       VpcId: !Ref VPC
 
+
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -119,6 +129,7 @@ Resources:
         - Key: name
           Value: Public Subnet 2
       VpcId: !Ref VPC
+ 
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
@@ -131,6 +142,7 @@ Resources:
           Value: Public Subnet 2
       VpcId: !Ref VPC
 
+
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -140,7 +152,8 @@ Resources:
       Tags:
         - Key: Name
           Value: Private Subnet 1 | App Tier
-      VpcId: !Ref VPC      
+      VpcId: !Ref VPC    
+ 
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -152,6 +165,7 @@ Resources:
         - Key: Name
           Value: Private Subnet 2 | App Tier
       VpcId: !Ref VPC
+ 
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
@@ -299,6 +313,8 @@ Resources:
         Ref: DBSubnetGroup
       DBParameterGroupName:
         Ref: DBParameterGroup
+      StorageEncrypted: true
+      KmsKeyId: !GetAtt RdsKmsKey.Arn
 
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -321,15 +337,27 @@ Resources:
             echo "{\"db_host\":\"${MyDB.Endpoint.Address}\",\"db_user\":\"csye6225root\",\"db_password\":\"csye6225pwd\",\"default_database\":\"csye6225\",\"db_port\":3306,\"s3_bucket\":\"${S3Bucket}\"}" > /home/ubuntu/dbconfig.json
 
   myDNSRecord:
-    Type: AWS::Route53::RecordSet
+    # Type: AWS::Route53::RecordSet
+    # Properties:
+    #   HostedZoneId: "Z02366482Y266U940QI5X"
+    #   Comment: DNS of my instance
+    #   Name: "demo.rishi-csye6225.me"
+    #   Type: A
+    #   TTL: 60
+    #   ResourceRecords:
+    #     - !GetAtt EC2Instance.PublicIp
+    Type: AWS::Route53::RecordSetGroup
     Properties:
       HostedZoneId: "Z02366482Y266U940QI5X"
-      Comment: DNS of my instance
-      Name: "demo.rishi-csye6225.me"
-      Type: A
-      TTL: 60
-      ResourceRecords:
-        - !GetAtt EC2Instance.PublicIp
+      # HostedZoneName: !Ref hostname
+      Comment: LoadBalancer pointing to DNS Zone
+      RecordSets:
+      - Name: "demo.rishi-csye6225.me"
+        Type: A
+        AliasTarget:  
+          HostedZoneId: !GetAtt 'LoadBalancer.CanonicalHostedZoneID'
+          DNSName: !GetAtt 'LoadBalancer.DNSName'
+
 
   S3Bucket:
     Type: "AWS::S3::Bucket"
@@ -483,48 +511,7 @@ Resources:
       Roles: 
         - Ref: IAMRole
 
-  CodeDeployServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: CodeDeployServiceRole
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - codedeploy.amazonaws.com
-            Action: 
-              - 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
-      Path: "/"
 
-  CodeDeployApplication:
-    Type: AWS::CodeDeploy::Application
-    Properties:
-      ComputePlatform: Server
-      ApplicationName: csye6225webapp
-
-  CodeDeployDeploymentGroup:
-    Type: AWS::CodeDeploy::DeploymentGroup
-    DependsOn: CodeDeployApplication 
-    Properties:
-      DeploymentGroupName: csye6225-webapp-deployment
-      ApplicationName: !Ref CodeDeployApplication
-      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
-      DeploymentStyle:
-        DeploymentType: IN_PLACE
-        DeploymentOption: WITHOUT_TRAFFIC_CONTROL
-      DeploymentConfigName: CodeDeployDefault.AllAtOnce
-      AutoRollbackConfiguration:
-        Enabled: 'true'
-        Events: 
-          - DEPLOYMENT_FAILURE
-      Ec2TagFilters:
-        - Key: Name
-          Value: FlaskAppASG
-          Type: KEY_AND_VALUE
 
   SNSservice:
     Type: AWS::SNS::Topic
@@ -621,7 +608,7 @@ Resources:
                                       },
                                       'Body': {
                                           'Text': {
-                                              'Data': "Please click on the link to verify your account. \n   http://demo.rishi-csye6225.me/v1/verifyUserEmail?Email={0:}&Token={1:}".format(user,token)
+                                              'Data': "Please click on the link to verify your account. \n   https://demo.rishi-csye6225.me/v1/verifyUserEmail?Email={0:}&Token={1:}".format(user,token)
                                           }
                                       }
                                   }
@@ -721,6 +708,306 @@ Resources:
               - !GetAtt DynamodbTablePro.Arn
       Roles:
         - !Ref IAMRole
+
+  EBSKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS Key for EBS'
+      KeyPolicy:
+        Id: "kms-key-for-ebs"
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow access for Key Administrators
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+          - Sid: Allow attachment of persistent resources
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Resource: '*'
+
+  EBSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ebsKey
+      TargetKeyId:
+        Ref: EBSKmsKey
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: LaunchTemplate
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - myIAMInstanceProfile
+            - Arn
+        ImageId: !Ref AMIID
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref MyKeyPair
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sdm"
+            Ebs:
+              VolumeSize: 30
+              VolumeType: "gp2"
+              DeleteOnTermination: true
+              Encrypted: true
+              KmsKeyId: !GetAtt EBSKmsKey.Arn
+        UserData:
+          Fn::Base64:
+            !Sub |
+              #!/bin/bash
+               echo "{\"db_host\":\"${MyDB.Endpoint.Address}\",\"db_user\":\"csye6225root\",\"db_password\":\"csye6225pwd\",\"default_database\":\"csye6225\",\"db_port\":3306,\"s3_bucket\":\"${S3Bucket}\"}" > /home/ubuntu/dbconfig.json
+               sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/home/ubuntu/cloudwatch-config.json -s
+  
+
+  AutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: '1'
+      MaxSize: '3'
+      DesiredCapacity: '1'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      VPCZoneIdentifier:
+      - !Ref PublicSubnet1
+      - !Ref PublicSubnet2
+      - !Ref PublicSubnet3
+      TargetGroupARNs:
+      - !Ref TargetGroup
+      Cooldown: 60
+      Tags:
+        - Key: Name
+          Value: flaskappasg
+          PropagateAtLaunch: "true"
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: load balancer security group
+        GroupName: load balancer
+        VpcId:
+          Ref: VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+  
+  LoadBalancer:
+    DependsOn: InternetGatewayAttach
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: AppLoadBalancer
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+      - !Ref PublicSubnet1
+      - !Ref PublicSubnet2
+      - !Ref PublicSubnet3
+      SecurityGroups: 
+      - !Ref LoadBalancerSecurityGroup
+
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: '11'
+      AlarmDescription: Alarm if CPU utilization more than 5%
+      Period: '300'
+      AlarmActions:
+      - !Ref ScaleOutPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref AutoscalingGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: '9'
+      AlarmDescription: Alarm if CPU utilization is less than 9%
+      Period: '300'
+      AlarmActions:
+      - !Ref ScaleInPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref AutoscalingGroup
+      ComparisonOperator: LessThanThreshold
+      MetricName: CPUUtilization
+  ScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref AutoscalingGroup
+      Cooldown: 60
+      ScalingAdjustment: 1
+  ScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref AutoscalingGroup
+      Cooldown: 60
+      ScalingAdjustment: -1
+  TargetGroup:
+    DependsOn: LoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /healthz
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 5
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      Name: AppLBTargetGroup
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: !Ref VPC
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: "arn:aws:acm:us-east-1:022816248044:certificate/59f74eef-0bda-4366-99fd-c038bb6c9e34"
+
+
+  RdsKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS Key for RDS'
+      KeyPolicy:
+        Id: "kms-key-for-rds"
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow access for Key Administrators
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS'
+            Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+          - Sid: Allow attachment of persistent resources
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS'
+            Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Resource: '*'
+          
+
+  RDSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/rdsKey
+      TargetKeyId:
+        Ref: RdsKmsKey
+  
 
 Outputs:
   VPC:

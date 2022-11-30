@@ -104,4 +104,8 @@ build {
       // "sudo apt-get clean",
     // ]
   }
+  post-processor "manifest" {
+    output     = "manifest.json"
+    strip_path = true
+  }
 }
