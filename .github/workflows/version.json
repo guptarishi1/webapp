@@ -1,0 +1,15 @@
+{
+    "MixedInstancesPolicy": {
+          "LaunchTemplate": {
+              "LaunchTemplateSpecification": {
+                  "LaunchTemplateName": "demo-launch-template",
+                  "Version": "$Latest"
+              },
+              "Overrides": [
+                  {
+                      "InstanceType": "t2.micro"
+                  }
+              ]
+            }
+    }
+}
