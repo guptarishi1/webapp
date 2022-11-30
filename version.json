@@ -2,7 +2,7 @@
     "MixedInstancesPolicy": {
           "LaunchTemplate": {
               "LaunchTemplateSpecification": {
-                  "LaunchTemplateName": "demo-launch-template",
+                  "LaunchTemplateName": "LaunchTemplate",
                   "Version": "$Latest"
               },
               "Overrides": [
