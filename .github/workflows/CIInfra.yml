@@ -75,9 +75,9 @@ jobs:
            rm manifest.json
       - name: Use the config file to create launch template version
         run: |
-             aws ec2 create-launch-template-version  --launch-template-name LaunchTemplate --version-description WebApp --source-version 1 --launch-template-data file://amiconfig.json
-             aws autoscaling update-auto-scaling-group --auto-scaling-group-name myteststack3-AutoscalingGroup-LKG09ASM28TJ --desired-capacity 1 --cli-input-json file://update.json
+             aws ec2 create-launch-template-version --launch-template-name LaunchTemplate --version-description WebApp --source-version 1 --launch-template-data file://amiconfig.json
+             aws autoscaling update-auto-scaling-group --auto-scaling-group-name asg-launch --desired-capacity 1 --cli-input-json file://update.json
 
       - name: Use the json file to refresh instances to use latest launch template
         run: |
-             aws autoscaling start-instance-refresh --auto-scaling-group-name demo-asg --preferences '{"InstanceWarmup": 100, "MinHealthyPercentage": 50}' --desired-configuration file://version.json
+             aws autoscaling start-instance-refresh --auto-scaling-group-name asg-launch --preferences '{"InstanceWarmup": 100, "MinHealthyPercentage": 50}' --desired-configuration file://version.json

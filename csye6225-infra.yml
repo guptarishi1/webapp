@@ -804,6 +804,7 @@ Resources:
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
+      AutoScalingGroupName: 'asg-launch'
       MinSize: '1'
       MaxSize: '3'
       DesiredCapacity: '1'
