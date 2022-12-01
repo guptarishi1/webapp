@@ -1,5 +1,5 @@
 {
-    "AutoScalingGroupName": "demo-asg",
+    "AutoScalingGroupName": "asg-launch",
     "CapacityRebalance": true,
     "MixedInstancesPolicy": {
         "LaunchTemplate": {
