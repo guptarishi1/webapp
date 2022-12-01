@@ -45,7 +45,7 @@ if db=="":
 else:
   mysql= MySQLdb.connect(config['db_host'],config['db_user'],config['db_password'],config['default_database'])
   cursor=mysql.cursor()
-  cursor.execute('CREATE TABLE if not exists customer (id varchar(255) PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255))')
+  cursor.execute('CREATE TABLE if not exists customer (id varchar(255) PRIMARY KEY, Last_Name varchar(255) NOT NULL, First_Name varchar(255) NOT NULL, username varchar(255) NOT NULL UNIQUE, account_created  varchar(255), password varchar(255) NOT NULL,account_updated  varchar(255),account_verified int not null default (0))')
   mysql.commit()
   cursor.close()
   cursor=mysql.cursor()
@@ -76,15 +76,16 @@ def test1():
     c.timing("Open point",dur)
     c.incr("Open point count") 
     app.logger.info("Hello")
-    return "Web development under progress"
+    return "Testing CD"
 
 @app.route('/v1/account/<string:id>', methods = ['GET'])
 
 def home2(id):
     start=time.time()
 
-    
-
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized"
 
     cursor = mysql.cursor()
 
@@ -141,7 +142,10 @@ def home2(id):
 def update_emp(id):
 
     start=time.time()
-
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized"
+    
     app.logger.info("Hello 200 OK")
     
 
@@ -208,60 +212,133 @@ def update_emp(id):
     c.incr("Put customer count")
     return jsonify(output),204
 
+# lambda_client = boto3.client('lambda',
+#                         region_name= 'us-east-1')
 
 
+def validated_user(username):
+    cursor=mysql.cursor()
+    cursor.execute('SELECT username,account_verified FROM customer where username = %s',[username])
+    output = list(cursor.fetchall())
+    if output[0][1] == 1:
+        return True
+    return False
+
+def check_token_expiry(table_items):
+    print('table_items: ', table_items)
+    dt = float(table_items['Creation_Time'])
+    currentTime = float(time.time())
+    time_diff_minutes = (currentTime - dt)/60
+    if time_diff_minutes<=2.0:
+        return True
+    return False
+
+def dynamo_db_insert(table_items,dynamodb_table,username):
+    token = ""
+    if not table_items:
+        token = str(uuid.uuid4())
+        response = dynamodb_table.put_item(
+        Item={
+            'TokenName': token,
+            'Email': username,
+            'Creation_Time' : str(time.time()),
+            'Expiration_Time' : str(time.time() + 120)
+            }
+        )
+        print("New record inserted successfully")
+        print('response: ', response)
+        snspublish(username, token)
+    else:
+        token = table_items['token']
+    return token
+
+def snspublish(username, token):
+    sns = boto3.client('sns', region_name = 'us-east-1')
+    att_dict={}
+    att_dict['Email'] = {'DataType':'String','StringValue':username}
+    att_dict['Token'] = {'DataType':'String','StringValue':token}
+    sns.publish(TopicArn='arn:aws:sns:us-east-1:022816248044:verify_email', Message="message to sns to verify user", Subject="verify your email", MessageAttributes=att_dict)
+
+# # lambda_client = boto3.client('lambda',
+# #                         region_name= 'us-east-1')
+
+
+# def send_verification_email(token, user, user_email):
+#     payload = {'token':token, 
+#                 'user':user,
+#                 'RECIPIENT':user_email}
+#     result = lambda_client.invoke(FunctionName='verifyEmail',
+#                                     Payload=json.dumps(payload))
+    
+#     return result
 
 @app.route('/v1/account', methods=['POST'])
 def create_cust():
 
  
     # try: 
-        start=time.time()
-        app.logger.info("Hello 200 OK")           
-        _json = request.json
-        _Last_Name = _json['Last_Name']
-        _First_Name = _json['First_Name']
-        _username = _json['username'] 
-        _password = _json['password'] 
+    start=time.time()
+    app.logger.info("Hello 200 OK")           
+    _json = request.json
+    _Last_Name = _json['Last_Name']
+    _First_Name = _json['First_Name']
+    _username = _json['username'] 
+    _password = _json['password'] 
 
-        _id = str(uuid.uuid4())
-        salt = bcrypt.gensalt()
-        hash_pwd = bcrypt.hashpw(_password.encode('utf-8'), salt)
+    _id = str(uuid.uuid4())
+    salt = bcrypt.gensalt()
+    hash_pwd = bcrypt.hashpw(_password.encode('utf-8'), salt)
 
-        date_time = datetime.now()
-        date_time = date_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    date_time = datetime.now()
+    date_time = date_time.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        print(date_time)
+    print(date_time)
 
-        _account_updated = date_time
-        _account_created = date_time
+    _account_updated = date_time
+    _account_created = date_time
 
-        cursor = mysql.cursor()	
+    cursor = mysql.cursor()	
 
-        cursor.execute('SELECT count(username) FROM customer where username = %s',[_username])
-        output = cursor.fetchall()
-        print('output: ', output)
+    cursor.execute('SELECT count(username) FROM customer where username = %s',[_username])
+    output = list(cursor.fetchall())
+    print('output: ', output)
 
-        if output[0][0] >= 1 :
-            return "Bad Request", 400
-        
+    cursor.execute('SELECT username,account_verified FROM customer where username = %s',[_username])
+    output = list(cursor.fetchall())
+
+    dynamodb_client = boto3.resource('dynamodb', region_name='us-east-1')
+    dynamodb_table = dynamodb_client.Table('csye6225Pro2')
+    # table_items = dynamodb_table.get_item(Key={'Email':_username})['Item']
+    table_items = ''
+    print ('table_items: ', table_items)
+    token = dynamo_db_insert(table_items,dynamodb_table, _username)
+    print('output: ', output)
+    if output:
+        if output[0][1] == 0:
+            return "Verification Pending", 201
+        elif output[0][1] == 1: 
+            return "Verified User Already Exists", 400
     
-        sqlQuery = "INSERT INTO customer(id,Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s, %s,%s, %s,%s,%s)"
-        bindData = (_Last_Name,_First_Name,_username,_password, date_time, date_time)           
-        cursor.execute('INSERT INTO customer(id, Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s,%s, %s,%s, %s,%s,%s)',(_id,_Last_Name,_First_Name,_username,hash_pwd.decode('utf-8'), date_time, date_time))
-        # print(bcrypt.check_password_hash(hashVar_pwd, '_password'))
-        mysql.commit()
 
-        cursor.execute('SELECT id,Last_Name,First_Name,username,account_updated,account_created FROM customer where username = %s',[_username])
-        output = cursor.fetchall()
+    
+    cursor.execute('INSERT INTO customer(id, Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s,%s, %s,%s, %s,%s,%s)',(_id,_Last_Name,_First_Name,_username,hash_pwd.decode('utf-8'), date_time, date_time))
+    # print(bcrypt.check_password_hash(hashVar_pwd, '_password'))
+    mysql.commit()
 
-        respone = jsonify('Customer added successfully!')
-        respone.status_code = 200
-        dur = (time.time() - start)*1000
-        c.timing("Post Timing",dur)
-        c.incr("Post count")
+    cursor.execute('SELECT id,Last_Name,First_Name,username,account_updated,account_created FROM customer where username = %s',[_username])
+    output = cursor.fetchall()
+
+    respone = jsonify('Customer added successfully!')
+    respone.status_code = 200
+
+    # result = send_verification_email(token,_First_Name, _username)
+    # print ('result: ', result)
+
+    dur = (time.time() - start)*1000
+    c.timing("Post Timing",dur)
+    c.incr("Post count")
        
-        return jsonify(output), 201 
+    return jsonify(output), 201 
 
 
 s3 = boto3.client('s3')
@@ -293,6 +370,9 @@ def show_docs():
 
     app.logger.info("Hello 200 OK")
 
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized"
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -331,7 +411,9 @@ def allowed_file(filename):
 def upload_file():
     start=time.time()
 
- 
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized" 
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -398,7 +480,9 @@ def get_docs(doc_id):
 
     app.logger.info("Hello 200 OK")
 
-
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized"
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -455,7 +539,10 @@ def delete_file(doc_id):
     start=time.time()
 
     app.logger.info("Hello 200 OK")
-   
+
+    req_username = request.authorization.username
+    if not validated_user(req_username):
+        return "Please Verify the account - Action Unauthorized"   
 
     cursor = mysql.cursor()
     username = request.authorization.username
@@ -504,6 +591,29 @@ def delete_file(doc_id):
     c.incr("Deleting the Document count")    
 
     return jsonify({"MESSAGE":"FILE DELETED"})
+from boto3.dynamodb.conditions import Key
+@app.route('/v1/verifyUserEmail',methods = ['GET'])
+def verify_user():
+    user_email=request.args.get('Email')
+    token = request.args.get('Token')
+    dynamodb_client = boto3.resource('dynamodb',region_name='us-east-1')
+    dynamodb_table = dynamodb_client.Table('csye6225Pro2')
+    # table_items = dynamodb_table.query(
+    #     KeyConditionExpression=Key('Email').eq(user_email),Key('TokenName').eq(token)
+    # )
+    table_items = dynamodb_table.get_item(Key={'Email':user_email, 'TokenName':token})['Item']
+    token_verified = check_token_expiry(table_items)
+    cursor=mysql.cursor()
+    if token_verified:   
+        cursor.execute('UPDATE customer SET account_verified = 1 WHERE username = %s',[user_email])
+        mysql.commit()
+        
+        return f"User Successfully Verified"
+    
+    cursor.execute('DELETE FROM customer WHERE username = %s',[user_email])
+    mysql.commit()
+    cursor.close() 
+    return f"Token Expired" 
 
 with app.app_context():
     print('connection setup')    

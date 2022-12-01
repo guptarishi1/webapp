@@ -1,0 +1,17 @@
+{
+    "AutoScalingGroupName": "asg-launch",
+    "CapacityRebalance": true,
+    "MixedInstancesPolicy": {
+        "LaunchTemplate": {
+            "LaunchTemplateSpecification": {
+                "LaunchTemplateName": "LaunchTemplate",
+                "Version": "$Latest"
+            },
+            "Overrides": [
+                {
+                    "InstanceType": "t2.micro"
+                }
+            ]
+        }
+    }
+}
