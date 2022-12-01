@@ -76,7 +76,7 @@ def test1():
     c.timing("Open point",dur)
     c.incr("Open point count") 
     app.logger.info("Hello")
-    return "Testing CD"
+    return "Web development under progress"
 
 @app.route('/v1/account/<string:id>', methods = ['GET'])
 
@@ -311,14 +311,15 @@ def create_cust():
     # table_items = dynamodb_table.get_item(Key={'Email':_username})['Item']
     table_items = ''
     print ('table_items: ', table_items)
-    token = dynamo_db_insert(table_items,dynamodb_table, _username)
+
     print('output: ', output)
     if output:
         if output[0][1] == 0:
             return "Verification Pending", 201
         elif output[0][1] == 1: 
             return "Verified User Already Exists", 400
-    
+
+    token = dynamo_db_insert(table_items,dynamodb_table, _username)   
 
     
     cursor.execute('INSERT INTO customer(id, Last_Name,First_Name,username,password,account_updated,account_created) VALUES(%s,%s, %s,%s, %s,%s,%s)',(_id,_Last_Name,_First_Name,_username,hash_pwd.decode('utf-8'), date_time, date_time))
