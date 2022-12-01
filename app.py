@@ -76,7 +76,7 @@ def test1():
     c.timing("Open point",dur)
     c.incr("Open point count") 
     app.logger.info("Hello")
-    return "Web development under progress"
+    return "Testing CD"
 
 @app.route('/v1/account/<string:id>', methods = ['GET'])
 
