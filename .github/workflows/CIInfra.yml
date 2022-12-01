@@ -63,8 +63,8 @@ jobs:
       - name: Configuring AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_Demo }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_Demo }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEMO }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEMO }}
           aws-region: us-east-1
       - name: Fetch the AMIID from packer and store it in a variable and send it to a config file
         run: |
