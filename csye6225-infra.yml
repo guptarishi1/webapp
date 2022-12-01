@@ -771,7 +771,7 @@ Resources:
       TargetKeyId:
         Ref: EBSKmsKey
 
-  LaunchTemplate:
+  LaunchTemplate1:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: LaunchTemplate
@@ -808,7 +808,7 @@ Resources:
       MaxSize: '3'
       DesiredCapacity: '1'
       LaunchTemplate:
-        LaunchTemplateId: !Ref LaunchTemplate
+        LaunchTemplateId: !Ref LaunchTemplate1
         Version: !GetAtt LaunchTemplate.LatestVersionNumber
       VPCZoneIdentifier:
       - !Ref PublicSubnet1
