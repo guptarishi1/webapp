@@ -88,6 +88,16 @@ build {
   destination = "/home/ubuntu/script.sh"
   }
 
+  provisioner "file"{
+  source = "update.json"
+  destination = "/home/ubuntu/update.json"
+  }
+
+  provisioner "file"{
+  source = "version.json"
+  destination = "/home/ubuntu/version.json"
+  }
+
   provisioner "shell" {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive",
