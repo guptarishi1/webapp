@@ -272,7 +272,7 @@ def snspublish(username, token):
     
 #     return result
 
-@app.route('/v1/account', methods=['POST'])
+@app.route('/v2/account', methods=['POST'])
 def create_cust():
 
  
